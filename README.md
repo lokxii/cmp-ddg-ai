@@ -28,6 +28,7 @@ cmp.setup({
 
 ## To-do list
 
+- [ ] better prompt
 - [ ] config: ignore file types
 - [ ] option to choose gpt-3.5-turbo
 - [ ] proper indentation
