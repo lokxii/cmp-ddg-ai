@@ -104,6 +104,7 @@ function source:_fetch_response(before, after, filetype, callback)
                 '-H', 'Content-Type: application/json',
                 '-H', 'Accept: text/event-stream',
                 '-H', 'x-vqd-4: ' .. session:get_vqd(),
+                '-H', 'user-agent: ' .. session:get_user_agent(),
                 '--data-binary', body,
             },
             on_exit = function(out, _)
@@ -118,7 +119,7 @@ function source:_fetch_response(before, after, filetype, callback)
                         table.insert(tokens, vim.json.decode(object).message)
                     end
                 end
-                local s = table.concat(tokens, ''):gsub('<end_code_middle>', ''):sub(2)
+                local s = table.concat(tokens, ''):sub(2)
                 callback(s)
             end
         })
