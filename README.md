@@ -28,8 +28,8 @@ cmp.setup({
 
 ## To-do list
 
-[ ] config: ignore file types
-[ ] option to choose gpt-3.5-turbo
-[ ] proper indentation
-[ ] proper logging
-[ ] proper error reporting
+- [ ] config: ignore file types
+- [ ] option to choose gpt-3.5-turbo
+- [ ] proper indentation
+- [ ] proper logging
+- [ ] proper error reporting
