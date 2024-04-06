@@ -1,6 +1,6 @@
 # cmp-ddg-ai
 
-duckduckgo chat (claude-instant-1.2) made available as nvim-cmp
+duckduckgo chat made available as nvim-cmp
 
 nvim-cmp source name: `cmp_ddg_ai`
 
