@@ -9,6 +9,6 @@ M.setup = function()
     cmp.register_source('cmp_ddg_ai', M.ai_source)
 end
 
-session:get_vqd()
+-- session:get_vqd()
 
 return M

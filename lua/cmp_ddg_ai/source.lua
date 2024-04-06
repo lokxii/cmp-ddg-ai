@@ -1,7 +1,8 @@
 local api = vim.api
 local cmp = require('cmp')
-local session = require('cmp_ddg_ai.session')
 local job = require('plenary.job')
+local session = require('cmp_ddg_ai.session')
+local utils = require('cmp_ddg_ai.utils')
 
 local source = {}
 function source:new(o)
@@ -14,6 +15,11 @@ end
 function source:get_debug_name()
     return 'AI'
 end
+
+local function esc(str)
+    return str:gsub("([^%w])", "%%%1")
+end
+
 
 function source:complete(ctx, callback)
     local max_lines = 1000
@@ -33,26 +39,22 @@ function source:complete(ctx, callback)
 
     local short_name = vim.filetype.match({ buf = 0 }) or ''
     source:_fetch_response(before, after, vim.o.filetype, function(answer)
+        local prefix = ctx.context.cursor_before_line:sub(ctx.offset)
+        local lines = utils.split(answer, '\n')
+        local trimmed = lines[1]:gsub('^\\s+', '')
+        local overlap = utils.find_overlap(ctx.context.cursor_before_line, trimmed)
+
+        lines[1] = trimmed:gsub(esc(overlap), '', 1)
+        local edit = table.concat(lines, '\n')
+
         local item = {
-            label = answer,
-            textEdit = {
-                newText = answer,
-                range = {
-                    start = {
-                        line = ctx.context.cursor.row - 1,
-                        character = 0,
-                    },
-                    ['end'] = {
-                        line = ctx.context.cursor.row - 1,
-                        character = ctx.context.cursor.col - 1,
-                    }
-                }
-            },
+            label = prefix .. edit,
             documentation = {
                 kind = cmp.lsp.MarkupKind.Markdown,
                 value = '```' .. short_name .. '\n' .. answer .. '\n```',
             }
         }
+
         callback({
             items = { item },
             isIncomplete = true,
@@ -78,15 +80,31 @@ function source:_fetch_response(before, after, filetype, callback)
     end
 
     local message = table.concat({
-        'Given the following ' .. filetype .. ' code, complete the code at <COMPLETE_CODE_HERE> for me.',
-        'DO NOT USE MARKDOWN. Write only valid code.',
-        'Make sure to follow indentation style.',
-        before .. '<COMPLETE_CODE_HERE>' .. after,
+        'You are a coding companion.',
+        ' You need to suggest code completions for the language ',
+        filetype,
+        '. Given some code prefix and suffix for context, output code which should follow the prefix code.',
+        ' You should only output valid code in ',
+        filetype,
+        '. To clearly define a code block, including white space, we will wrap the code block with tags.',
+        ' Make sure to respect the white space and indentation rules of the language.',
+        ' OUTPUT ONLY CODE AND DO NOT WRAP YOUR ANSWER IN MARKDOWN, make sure you only use the relevant programming language verbatim.',
+        ' Follow the instructions appearing next.',
+        ' Now for the users request: ',
+        ' For example, consider the following request:',
+        ' <begin_code_prefix>def print_hello():<end_code_prefix><begin_code_suffix>\n    return<end_code_suffix><begin_code_middle>',
+        ' Your answer should be:',
+        [=[    print('Hello')<end_code_middle>]=],
+        '<begin_code_prefix>',
+        before,
+        '<end_code_prefix> <begin_code_suffix>',
+        after,
+        '<end_code_suffix><begin_code_middle>',
     }, '\n')
 
     local body = vim.json.encode({
-        -- model = 'gpt-3.5-turbo-0125', -- gpt-3.5 sucks at following instructions
-        model = "claude-instant-1.2",
+        model = 'gpt-3.5-turbo-0125', -- gpt-3.5 sucks at following instructions
+        -- model = "claude-instant-1.2",
         messages = {
             {
                 role = 'user',
@@ -119,7 +137,10 @@ function source:_fetch_response(before, after, filetype, callback)
                         table.insert(tokens, vim.json.decode(object).message)
                     end
                 end
-                local s = table.concat(tokens, ''):sub(2)
+                local s = table.concat(tokens, ''):gsub('<end_code_middle>', '')
+                if s:find('```') then
+                    s = s:match('```[^\n]*\n(.*)```')
+                end
                 callback(s)
             end
         })
